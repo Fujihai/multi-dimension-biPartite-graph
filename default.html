@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Multi-Dimension-biPartite</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.7.0/d3.js"></script>
+  <script src="viz.js"></script>
+  <style>
+    .viz-biPartite-subBar {
+      shape-rendering:crispEdges;
+    }
+
+    .viz-biPartite-mainBar rect{
+      fill-opacity: 0;
+      stroke-width: 0.5px;
+      stroke: rgb(0, 0, 0);
+      stroke-opacity: 0;
+    }
+
+    .viz-biPartite-mainBar .perc{
+      fill: black;
+      text-anchor: middle;
+      font-size: 12px;
+    }
+
+    .viz-biPartite-mainBar .label{
+      fill: black;
+      text-anchor: middle;
+    }
+  </style>
+</head>
+<body>
+  <svg width="960" height="700">
+    <g transform="translate(250, 50)"></g>
+  </svg>
+  <script>
+    // 源数据
+    var data = [
+      { group: 'A', subgroup: 'X', count: 2 },
+      { group: 'A', subgroup: 'Y', count: 3 },
+      { group: 'B', subgroup: 'X', count: 5 },
+      { group: 'B', subgroup: 'Y', count: 8 },
+      { group: 'C', subgroup: 'X', count: 2 },
+      { group: 'C', subgroup: 'X', count: 9 },
+      { group: 'D', subgroup: 'Z', count: 9 }
+    ]
+
+    var bP = viz.biPartite()
+          // min 参数设置，避免百分比为 0 时，文字重合挤压
+          .min(30)
+          .keyPrimary(d => d.group)
+          .keySecondary(d => d.subgroup)
+          .value(d => d.count)
+          .data(data)
+    
+    var bPg = d3.select("g").call(bP)
+
+    bPg.selectAll(".viz-biPartite-mainBar")
+       .append("text")
+       .attr("class", "perc")
+       .text(d =>{ return d3.format('.0%')(d.percent)})
+
+    bPg.selectAll(".viz-biPartite-mainBar")
+        .on("mouseover", mouseover)
+        .on("mouseout", mouseout)
+    
+    initLRSideText()
+
+    function mouseover(d) {
+      bP.mouseover(d)
+
+      // bar 内百分比显示
+      bPg.selectAll(".viz-biPartite-mainBar")
+         .select(".perc")
+         .text(d => { return d3.format(".0%")(d.percent) })
+    }
+
+    function mouseout(d) {
+      bP.mouseout(d)
+
+      bPg.selectAll(".viz-biPartite-mainBar")
+         .select(".perc")
+         .text(d => { return d3.format(".0%")(d.percent) })
+    }
+
+    // bar 左右文字插入显示
+    function initLRSideText () {
+      bPg.selectAll(".viz-biPartite-mainBar")
+         .append("text")
+         .attr("class", 'label')
+         .attr("fontSize", '16px')
+         .attr("font-weight", "bold")
+         .attr("x", d => (d.part === "primary") ? -30 : 30)
+         .attr("text-anchor", "start")
+         .text(d => d.key)
+    }
+  </script>
+</body>
+</html>

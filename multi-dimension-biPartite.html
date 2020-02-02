@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Multi-Dimension-biPartite之多维度排序展示</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.7.0/d3.js"></script>
+    <script src="viz.js"></script>
+    <script type="text/javascript" src="results.js"></script>
+    <style>
+      .viz-biPartite-subBar {
+        shape-rendering: crispEdges;
+      }
+
+      .viz-biPartite-mainBar rect {
+        fill-opacity: 0;
+        stroke-width: 0.5px;
+        stroke: rgb(0, 0, 0);
+        stroke-opacity: 0;
+      }
+
+      .viz-biPartite-mainBar .perc {
+        fill: black;
+        text-anchor: middle;
+        font-size: 12px;
+      }
+
+      .viz-biPartite-mainBar .label {
+        fill: black;
+        text-anchor: middle;
+      }
+
+      .svg-layout {
+        margin: 0 auto;
+      }
+
+      .select-layout {
+        width: 960px;
+        height: 30px;
+        line-height: 30px;
+      }
+
+      #left-select {
+        width: 130px;
+      }
+
+      #mid-select {
+        width: 364px;
+      }
+
+      #right-select {
+        width: 135px;
+      }
+
+      #left-select,
+      #mid-select,
+      #right-select {
+        padding: 5px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <div class="select-layout">
+        <select name="" id="left-select">
+          <option value="age" selected>年龄</option>
+          <option value="sex">性别</option>
+          <option value="city">城市</option>
+        </select>
+        <select name="" id="mid-select">
+          <option value="pv">指标：pv</option>
+          <option value="vv">指标：vv</option>
+        </select>
+        <select name="" id="right-select">
+          <option value="age">年龄</option>
+          <option value="sex">性别</option>
+          <option value="city" selected>城市</option>
+        </select>
+      </div>
+      <svg width="960" height="700" class="svg-layout">
+        <g transform="translate(100, 8)"></g>
+      </svg>
+    </div>
+    <script>
+      // 源数据
+      var data = results.data;
+
+      // 主次维度权重
+      const sortMap = {
+        age: {
+          "18岁以下": 0,
+          "1至18岁": 1,
+          "19至30岁": 2,
+          "31至45岁": 3,
+          "46至60岁": 4,
+          "61岁以上": 5
+        },
+        sex: {
+          '男': 1,
+          '女': 2,
+          '未知': 3
+        },
+        city: {
+          '北京': 1,
+          '深圳': 2,
+          '广州': 3,
+          '成都': 4,
+          '杭州': 5,
+          '武汉': 6,
+          '天津': 7,
+          '南京': 8
+        }
+      };
+
+      // 主次维度比较函数
+      const sortFun = {
+        ageAscCmpFun: (a, b) => sortMap["age"][a] - sortMap["age"][b],
+        ageDescCmpFun: (a, b) => sortMap["age"][b] - sortMap["age"][a],
+        sexAscCmpFun: (a, b) => sortMap["sex"][a] - sortMap["sex"][b],
+        sexDescCmpFun: (a, b) => sortMap["sex"][b] - sortMap["sex"][a],
+        cityAscCmpFun: (a, b) => sortMap["city"][a] - sortMap["city"][b],
+        cityDescCmpFun: (a, b) => sortMap["city"][b] - sortMap["city"][a]
+      };
+
+      var leftVal = "sex",
+        midVal = "pv",
+        rightVal = "city";
+      var bP, bPg;
+
+      function update() {
+        bP = bP
+          .keyPrimary(d => d[leftVal])
+          .sortPrimary((a, b) => sortMap[leftVal][a] - sortMap[leftVal][b])
+          .keySecondary(d => d[rightVal])
+          .sortSecondary((a, b) => sortMap[rightVal][a] - sortMap[rightVal][b])
+          .value(d => d[midVal]);
+
+        bPg = d3.select("g").call(bP);
+
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .append("text")
+          .attr("class", "perc")
+          .text(d => {
+            return d3.format(".0%")(d.percent);
+          });
+
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .on("mouseover", mouseover)
+          .on("mouseout", mouseout);
+
+        initLRSideText();
+      }
+
+      // biPartite 实例初始化
+      function bpInit() {
+        bP = viz
+          .biPartite()
+          // min 参数设置，避免百分比为 0 时，文字重合挤压
+          .min(30)
+          .keyPrimary(d => d.age)
+          .sortPrimary(sortFun.ageAscCmpFun)
+          .keySecondary(d => d.city)
+          .sortSecondary(sortFun.cityAscCmpFun)
+          .value(d => d.pv)
+          .data(data);
+      }
+
+      // g 标签数据初始化
+      function bPgInit() {
+        bPg = d3.select("g").call(bP);
+
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .append("text")
+          .attr("class", "perc")
+          .text(d => {
+            return d3.format(".0%")(d.percent);
+          });
+
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .on("mouseover", mouseover)
+          .on("mouseout", mouseout);
+      }
+
+      function mouseover(d) {
+        bP.mouseover(d);
+        // bar 内百分比显示
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .select(".perc")
+          .text(d => {
+            return d3.format(".0%")(d.percent);
+          });
+      }
+
+      function mouseout(d) {
+        bP.mouseout(d);
+
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .select(".perc")
+          .text(d => {
+            return d3.format(".0%")(d.percent);
+          });
+      }
+
+      // bar 左右文字插入显示
+      function initLRSideText() {
+        bPg
+          .selectAll(".viz-biPartite-mainBar")
+          .append("text")
+          .attr("class", "label")
+          .attr("fontSize", "16px")
+          .attr("font-weight", "bold")
+          .attr("x", d => (d.part === "primary" ? -60 : 60))
+          .attr("text-anchor", "start")
+          .text(d => d.key);
+      }
+
+      // select onchange 事件监听
+      function baseOnSelectHandler(domId, originVar) {
+        if (!domId) {
+          return;
+        }
+
+        var selectNode = document.querySelector(domId);
+        var options = selectNode.options;
+        selectNode.onchange = () => {
+          var idx = selectNode.selectedIndex;
+          window[originVar] = options[idx].value;
+          update();
+        };
+      }
+
+      bpInit();
+      bPgInit();
+      initLRSideText();
+
+      (function onLeftSelect() {
+        baseOnSelectHandler("#left-select", "leftVal");
+      })();
+      (function onMidSelect() {
+        baseOnSelectHandler("#mid-select", "midVal");
+      })();
+      (function onRightSelect() {
+        baseOnSelectHandler("#right-select", "rightVal");
+      })();
+    </script>
+  </body>
+</html>
